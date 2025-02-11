@@ -23,21 +23,17 @@ defmodule Bencode do
           _               -> raise("there should be a singular root item")
         end
     end
-
     def decode(_), do: "Invalid encoded value: not binary"
 
     # base case when the full parsing is complete
     defp parse([], _, result), do: result
 
     # parse strings
-    defp parse([digit | rest], {nil, []}, parsed) when ?0 <= digit and digit <= ?9, do:
-        parse(rest, {:strlen, [digit]}, parsed)
-
-    defp parse([digit | rest], {:strlen, len}, parsed) when ?0 <= digit and digit <= ?9, do:
-        parse(rest, {:strlen, [digit | len]}, parsed)
-
+    defp parse([digit | rest], {nil, []}, parsed) when ?0<=digit and digit<=?9, do: parse(rest, {:strlen, [digit]}, parsed)
+    defp parse([digit | rest], {:strlen, len}, parsed) when ?0<=digit and digit<=?9, do: parse(rest, {:strlen, [digit | len]}, parsed)
     defp parse([?: | rest], {:strlen, len}, parsed) do
-        {word, rest} = read_str(rest, Enum.reverse(len) |> List.to_integer())
+        strlen = Enum.reverse(len) |> List.to_integer()
+        {word, rest} = {Enum.slice(rest, 0, strlen) |> List.to_string(), Enum.slice(rest, strlen..-1//1)}
         parsed = case parsed do
             [{type, curr} | prev] when is_list(curr) -> [{type, [word | curr]} | prev]
             _                                        -> [ word | parsed ]
@@ -45,22 +41,10 @@ defmodule Bencode do
         parse(rest, {nil, []}, parsed)
     end
 
-    defp read_str(charlist, length), do:
-        {
-            Enum.slice(charlist, 0, length) |> List.to_string(),
-            Enum.slice(charlist, length..-1//1)
-        }
-
     # parse integers
-    defp parse([?i | rest], {nil, []}, parsed), do:
-        parse(rest, {:integer, []}, parsed)
-
-    defp parse([?- | rest], {:integer, []}, parsed), do:
-        parse(rest, {:integer, [?-]}, parsed)
-
-    defp parse([digit | rest], {:integer, rev_int}, parsed) when ?0 <= digit and digit <= ?9, do:
-        parse(rest, {:integer, [digit | rev_int]}, parsed)
-
+    defp parse([?i | rest], {nil, []}, parsed), do: parse(rest, {:integer, []}, parsed)
+    defp parse([?- | rest], {:integer, []}, parsed), do: parse(rest, {:integer, [?-]}, parsed)
+    defp parse([digit | rest], {:integer, rev_int}, parsed) when ?0<=digit and digit<=?9, do: parse(rest, {:integer, [digit | rev_int]}, parsed)
     defp parse([?e | rest], {:integer, rev_int}, parsed) do
         integer = Enum.reverse(rev_int) |> List.to_integer()
         parsed = case parsed do
@@ -71,10 +55,7 @@ defmodule Bencode do
     end
 
     # parse lists
-    defp parse([?l | rest], {nil, []}, parsed) do
-        parse(rest, {nil, []}, [{:list, []} | parsed])
-    end
-
+    defp parse([?l | rest], {nil, []}, parsed), do: parse(rest, {nil, []}, [{:list, []} | parsed])
     defp parse([?e | rest], _, [{:list, list} | prev]) do
         list = Enum.reverse(list)
         parsed = case prev do

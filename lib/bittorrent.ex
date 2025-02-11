@@ -4,6 +4,11 @@ defmodule Bittorrent.CLI do
             ["decode" | [encoded_str | _]] ->
                 decoded_str = Bencode.decode(encoded_str)
                 IO.puts(Jason.encode!(decoded_str))
+            ["info" | torrent_file ] ->
+                {:ok, binary} = File.read(torrent_file)
+                %{"announce" => tracker_url, "info" => %{"length" => length}} = Bencode.decode(binary)
+                IO.puts("Tracker URL: #{tracker_url}")
+                IO.puts("Length: #{length}")
             [command | _] ->
                 IO.puts("Unknown command: #{command}")
                 System.halt(1)

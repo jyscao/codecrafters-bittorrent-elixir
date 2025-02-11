@@ -64,4 +64,15 @@ defmodule Bencode do
         end
         parse(rest, {nil, []}, parsed)
     end
+
+    # parse dictionaries
+    defp parse([?d | rest], {nil, []}, parsed), do: parse(rest, {nil, []}, [{:dict, []} | parsed])
+    defp parse([?e | rest], _, [{:dict, dict} | prev]) do
+        dict = Enum.reverse(dict) |> Enum.chunk_every(2) |> Map.new(fn [k, v] -> {k, v} end)
+        parsed = case prev do
+            [{type, curr} | pprev] when is_list(curr) -> [{type, [dict | curr]} | pprev]
+            []                                        -> [dict | prev]
+        end
+        parse(rest, {nil, []}, parsed)
+    end
 end

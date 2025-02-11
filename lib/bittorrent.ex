@@ -70,7 +70,7 @@ defmodule Bencode do
     # parse dictionaries
     defp parse([?d | rest], parsed), do: parse(rest, [{:dict, []} | parsed])
     defp parse([?e | rest], [{:dict, dict} | outers]) do
-        dict = Enum.chunk_every(dict, 2) |> Map.new(fn [{_val_t, val}, {:string, key}] -> {key, val} end)
+        dict = Stream.chunk_every(dict, 2) |> Map.new(fn [{_val_t, val}, {:string, key}] -> {key, val} end)
         parsed = case outers do
             []                                         -> [{:dict, dict}]
             [{type, curr} | outers] when is_list(curr) -> [{type, [{:dict, dict} | curr]} | outers]

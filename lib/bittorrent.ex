@@ -17,12 +17,19 @@ end
 defmodule Bencode do
     def decode(encoded_value) when is_binary(encoded_value) do
         binary_data = :binary.bin_to_list(encoded_value)
-        case Enum.find_index(binary_data, fn char -> char == ?: end) do
-            nil ->
-                IO.puts("The ':' character is not found in the binary")
-            index ->
-                rest = Enum.slice(binary_data, index+1..-1//1)
-                List.to_string(rest)
+
+        colon_idx  = Enum.find_index(binary_data, &(&1===?:))
+        is_integer = List.first(binary_data) === ?i and List.last(binary_data) === ?e
+
+        cond do
+            colon_idx ->
+                Enum.slice(binary_data, colon_idx+1..-1//1) |> List.to_string()
+
+            is_integer ->
+                Enum.slice(binary_data, 1..-2//1) |> List.to_integer()
+
+            true ->
+                "Not a valid bencoded string"
         end
     end
 

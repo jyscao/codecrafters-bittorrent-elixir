@@ -16,22 +16,71 @@ end
 
 defmodule Bencode do
     def decode(encoded_value) when is_binary(encoded_value) do
-        binary_data = :binary.bin_to_list(encoded_value)
-
-        colon_idx  = Enum.find_index(binary_data, &(&1===?:))
-        is_integer = List.first(binary_data) === ?i and List.last(binary_data) === ?e
-
-        cond do
-            colon_idx ->
-                Enum.slice(binary_data, colon_idx+1..-1//1) |> List.to_string()
-
-            is_integer ->
-                Enum.slice(binary_data, 1..-2//1) |> List.to_integer()
-
-            true ->
-                "Not a valid bencoded string"
+        case parse(:binary.bin_to_list(encoded_value), {nil, []}, []) do
+          [{:list, list}] -> list
+          [{:dict, dict}] -> dict
+          [item]          -> item
+          _               -> raise("there should be a singular root item")
         end
     end
 
     def decode(_), do: "Invalid encoded value: not binary"
+
+    # base case when the full parsing is complete
+    defp parse([], _, result), do: result
+
+    # parse strings
+    defp parse([digit | rest], {nil, []}, parsed) when ?0 <= digit and digit <= ?9, do:
+        parse(rest, {:strlen, [digit]}, parsed)
+
+    defp parse([digit | rest], {:strlen, len}, parsed) when ?0 <= digit and digit <= ?9, do:
+        parse(rest, {:strlen, [digit | len]}, parsed)
+
+    defp parse([?: | rest], {:strlen, len}, parsed) do
+        {word, rest} = read_str(rest, Enum.reverse(len) |> List.to_integer())
+        parsed = case parsed do
+            [{type, curr} | prev] when is_list(curr) -> [{type, [word | curr]} | prev]
+            _                                        -> [ word | parsed ]
+        end
+        parse(rest, {nil, []}, parsed)
+    end
+
+    defp read_str(charlist, length), do:
+        {
+            Enum.slice(charlist, 0, length) |> List.to_string(),
+            Enum.slice(charlist, length..-1//1)
+        }
+
+    # parse integers
+    defp parse([?i | rest], {nil, []}, parsed), do:
+        parse(rest, {:integer, []}, parsed)
+
+    defp parse([?- | rest], {:integer, []}, parsed), do:
+        parse(rest, {:integer, [?-]}, parsed)
+
+    defp parse([digit | rest], {:integer, rev_int}, parsed) when ?0 <= digit and digit <= ?9, do:
+        parse(rest, {:integer, [digit | rev_int]}, parsed)
+
+    defp parse([?e | rest], {:integer, rev_int}, parsed) do
+        integer = Enum.reverse(rev_int) |> List.to_integer()
+        parsed = case parsed do
+            [{type, curr} | prev] when is_list(curr) -> [{type, [integer | curr]} | prev]
+            _                                        -> [integer | parsed]
+        end
+        parse(rest, {nil, []}, parsed)
+    end
+
+    # parse lists
+    defp parse([?l | rest], {nil, []}, parsed) do
+        parse(rest, {nil, []}, [{:list, []} | parsed])
+    end
+
+    defp parse([?e | rest], _, [{:list, list} | prev]) do
+        list = Enum.reverse(list)
+        parsed = case prev do
+            [{type, curr} | pprev] when is_list(curr) -> [{type, [list | curr]} | pprev]
+            []                                        -> [list | prev]
+        end
+        parse(rest, {nil, []}, parsed)
+    end
 end

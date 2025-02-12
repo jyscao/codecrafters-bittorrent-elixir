@@ -12,9 +12,7 @@ defmodule Bittorrent.CLI do
                 IO.puts("Tracker URL: #{tracker_url}")
                 IO.puts("Length: #{length}")
 
-                info_hash = Bencode.get_encoded_info_dict(encoded_str)
-                    |> then(&(:crypto.hash(:sha, &1)))
-                    |> Base.encode16(case: :lower)
+                info_hash = Bencode.get_info_hash(encoded_str)
                 IO.puts("Info Hash: #{info_hash}")
 
             [command | _] ->

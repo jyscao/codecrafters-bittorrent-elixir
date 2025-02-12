@@ -1,10 +1,12 @@
 defmodule Bencode do
-    def get_encoded_info_dict(encoded_value) when is_binary(encoded_value) do
+    def get_info_hash(encoded_value) when is_binary(encoded_value) do
         :binary.bin_to_list(encoded_value)
         |> find_info_start()
         |> find_info_content(0, [])
+        |> then(&(:crypto.hash(:sha, &1)))
+        |> Base.encode16(case: :lower)
     end
-    def get_encoded_info_dict(_), do: "Invalid encoded value: not binary"
+    def get_info_hash(_), do: "Invalid encoded value: not binary"
 
     defp find_info_start(~c"4:info" ++ rest), do: rest
     defp find_info_start([_ | rest]), do: find_info_start(rest)

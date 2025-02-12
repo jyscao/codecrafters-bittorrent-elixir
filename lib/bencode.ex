@@ -24,6 +24,15 @@ defmodule Bencode do
     defp find_info_content([init | rest], lvl, res) when init in [?i, ?l, ?d], do: find_info_content(rest, lvl+1, [init | res])
     defp find_info_content([char | rest], lvl, res), do: find_info_content(rest, lvl, [char | res])
 
+    def get_encoded_pieces_bytels(encoded_value) when is_binary(encoded_value) do
+        pieces_start = :binary.bin_to_list(encoded_value) |> find_pieces_start()
+        colon_idx = Enum.find_index(pieces_start, &(&1===?:))
+        pieces_enc_len = Enum.slice(pieces_start, 0, colon_idx) |> List.to_integer()
+        Enum.slice(pieces_start, colon_idx+1, pieces_enc_len)
+    end
+    defp find_pieces_start(~c"6:pieces" ++ rest), do: rest
+    defp find_pieces_start([_ | rest]), do: find_pieces_start(rest)
+
     def decode(encoded_value) when is_binary(encoded_value) do
         [{_type, item}] = parse(:binary.bin_to_list(encoded_value), [])
         item

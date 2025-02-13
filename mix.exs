@@ -16,6 +16,7 @@ defmodule App.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
+      {:req, "~> 0.5.0"},
     ]
   end
 end

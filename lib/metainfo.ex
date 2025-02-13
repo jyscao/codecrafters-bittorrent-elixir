@@ -12,20 +12,23 @@ defmodule Metainfo do
         %{
             tracker_url:  tracker_url,
             file_length:  file_length,
-            info_hash:    get_info_hash(encoded_str),
+            info_hash:    get_info_hash_base16(encoded_str),
             piece_length: piece_length,
             piece_hashes: String.to_charlist(encoded_piece_hashes) |> get_piece_hashes([])
         }
     end
 
-    defp get_info_hash(encoded_value) when is_binary(encoded_value) do
+    def get_info_hash_raw(encoded_value) when is_binary(encoded_value) do
         :binary.bin_to_list(encoded_value)
         |> find_info_start()
         |> find_info_content(0, [])
         |> then(&(:crypto.hash(:sha, &1)))
-        |> Base.encode16(case: :lower)
     end
-    defp get_info_hash(_), do: "Invalid encoded value: not binary"
+
+    defp get_info_hash_base16(encoded_value) when is_binary(encoded_value) do
+        get_info_hash_raw(encoded_value) |> Base.encode16(case: :lower)
+    end
+    defp get_info_hash_base16(_), do: "Invalid encoded value: not binary"
 
     defp find_info_start(~c"4:info" ++ rest), do: rest
     defp find_info_start([_ | rest]), do: find_info_start(rest)

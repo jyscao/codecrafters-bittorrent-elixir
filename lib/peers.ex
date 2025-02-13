@@ -2,7 +2,7 @@ defmodule Peers do
     def get(encoded_str) do
         %{"peers" => peers} = make_request(encoded_str) |> Bencode.decode()
         raw_peers_data = String.to_charlist(peers)
-        decode_peer_ips(raw_peers_data, []) |> Enum.join("\n")
+        decode_peer_ips(raw_peers_data, [])
     end
 
     defp make_request(encoded_str) do

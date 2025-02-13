@@ -51,7 +51,6 @@ defmodule Metainfo do
         |> Stream.map(&((if String.length(&1)===1, do: "0#{&1}", else: &1) |> String.downcase()))
         |> Stream.chunk_every(20)
         |> Stream.map(&(Enum.join(&1)))
-        |> Enum.join("\n")
     end
     defp get_piece_hashes([byte | rest], hashes), do:
         get_piece_hashes(rest, [Integer.to_string(byte, 16) | hashes])

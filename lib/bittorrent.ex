@@ -12,12 +12,12 @@ defmodule Bittorrent.CLI do
                 IO.puts("Length: #{metainfo.file_length}")
                 IO.puts("Info Hash: #{metainfo.info_hash}")
                 IO.puts("Piece Length: #{metainfo.piece_length}")
-                IO.puts("Piece Hashes:\n#{metainfo.piece_hashes}")
+                IO.puts("Piece Hashes:\n#{Enum.join(metainfo.piece_hashes, "\n")}")
 
             ["peers", torrent_file] ->
                 {:ok, encoded_str} = File.read(torrent_file)
                 peers = Peers.get(encoded_str)
-                IO.puts(peers)
+                IO.puts(Enum.join(peers, "\n"))
 
             [command | _] ->
                 IO.puts("Unknown command: #{command}")

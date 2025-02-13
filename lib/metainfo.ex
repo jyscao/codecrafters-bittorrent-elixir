@@ -10,9 +10,9 @@ defmodule Metainfo do
         } = Bencode.decode(encoded_str)
 
         %{
-            tracker_url: tracker_url,
-            file_length: file_length,
-            info_hash: get_info_hash(encoded_str),
+            tracker_url:  tracker_url,
+            file_length:  file_length,
+            info_hash:    get_info_hash(encoded_str),
             piece_length: piece_length,
             piece_hashes: String.to_charlist(encoded_piece_hashes) |> get_piece_hashes([])
         }
@@ -43,8 +43,13 @@ defmodule Metainfo do
     defp find_info_content([init | rest], lvl, res) when init in [?i, ?l, ?d], do: find_info_content(rest, lvl+1, [init | res])
     defp find_info_content([char | rest], lvl, res), do: find_info_content(rest, lvl, [char | res])
 
-    defp get_piece_hashes([], hashes), do:
-        Enum.reverse(hashes) |> Enum.map_join(&((if String.length(&1)===1, do: "0#{&1}", else: &1) |> String.downcase()))
+    defp get_piece_hashes([], hashes) do
+        Enum.reverse(hashes)
+        |> Stream.map(&((if String.length(&1)===1, do: "0#{&1}", else: &1) |> String.downcase()))
+        |> Stream.chunk_every(20)
+        |> Stream.map(&(Enum.join(&1)))
+        |> Enum.join("\n")
+    end
     defp get_piece_hashes([byte | rest], hashes), do:
         get_piece_hashes(rest, [Integer.to_string(byte, 16) | hashes])
 end

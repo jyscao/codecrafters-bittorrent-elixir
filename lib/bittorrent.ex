@@ -5,7 +5,7 @@ defmodule Bittorrent.CLI do
                 decoded_str = Bencode.decode(encoded_str)
                 IO.puts(Jason.encode!(decoded_str))
 
-            ["info" | torrent_file] ->
+            ["info", torrent_file] ->
                 {:ok, encoded_str} = File.read(torrent_file)
                 metainfo = Metainfo.get_all(encoded_str)
                 IO.puts("Tracker URL: #{metainfo.tracker_url}")
@@ -14,7 +14,7 @@ defmodule Bittorrent.CLI do
                 IO.puts("Piece Length: #{metainfo.piece_length}")
                 IO.puts("Piece Hashes:\n#{metainfo.piece_hashes}")
 
-            ["peers" | torrent_file] ->
+            ["peers", torrent_file] ->
                 {:ok, encoded_str} = File.read(torrent_file)
                 peers = Peers.get(encoded_str)
                 IO.puts(peers)

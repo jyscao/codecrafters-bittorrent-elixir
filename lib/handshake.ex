@@ -1,14 +1,15 @@
 defmodule Handshake do
+    @self_peer_id :crypto.hash(:sha, "jyscao")
+
     def get_peer_id(encoded_str, peer_addr) do
         info_hash_raw = Metainfo.get_info_hash_raw(encoded_str)
 
-        socket = connect(peer_addr)
-        {:ok, resp} = do_handshake(socket, info_hash_raw)
-
-        extract_peer_id(resp, info_hash_raw)
+        make_connection(peer_addr)
+        |> do_handshake(info_hash_raw)
+        |> extract_peer_id(info_hash_raw)
     end
 
-    defp connect(peer_addr) do
+    defp make_connection(peer_addr) do
         [ipv4_str, port_str] = String.split(peer_addr, ":", parts: 2)
         {ipv4, port} = {
             String.split(ipv4_str, ".", parts: 4) |> Enum.map(&(String.to_integer(&1))) |> List.to_tuple(),
@@ -17,32 +18,29 @@ defmodule Handshake do
 
         opts = [:binary, active: false]
         case :gen_tcp.connect(ipv4, port, opts) do
-            {:ok, socket} -> socket
+            {:ok, socket}    -> socket
             {:error, reason} -> reason
         end
     end
 
     defp do_handshake(socket, info_hash_raw) do
-        msg = construct_handshake_message(info_hash_raw)
-        case :gen_tcp.send(socket, msg) do
-            :ok              -> :gen_tcp.recv(socket, 0)
-            {:error, reason} -> {:error, reason}
+        with :ok <- :gen_tcp.send(socket, make_msg(info_hash_raw)), 
+            {:ok, resp} <- :gen_tcp.recv(socket, 0)
+        do
+            resp
+        else
+            err -> {:error, err}
         end
     end
 
-    defp construct_handshake_message(info_hash_raw) do
-        msg_header    = <<19>> <> "BitTorrent protocol" <> <<0::64>>
-        self_peer_id  = :crypto.hash(:sha, "jyscao")
-        msg_header <> info_hash_raw <> self_peer_id
-    end
+    defp make_msg(info_hash_raw), do:
+        <<19>> <> "BitTorrent protocol" <> <<0::64>> <> info_hash_raw <> @self_peer_id
 
-    defp extract_peer_id(<<header::224, info_hash::160, peer_id::160>>, info_hash_raw) do
-        with ^header <- :binary.decode_unsigned(<<19>> <> "BitTorrent protocol" <> <<0::64>>),
-            ^info_hash <- :binary.decode_unsigned(info_hash_raw)
+    defp extract_peer_id(<<header_int::224, info_hash_int::160, peer_id_int::160>>, computed_info_hash) do
+        with <<19>> <> "BitTorrent protocol" <> <<0::64>> = :binary.encode_unsigned(header_int),
+            ^computed_info_hash = :binary.encode_unsigned(info_hash_int)
         do
-            :binary.encode_unsigned(peer_id) |> Base.encode16(case: :lower)
-        else
-            _err -> {:error, "cannot validate and/or parse client response"}
+            :binary.encode_unsigned(peer_id_int) |> Base.encode16(case: :lower)
         end
     end
 end

@@ -1,4 +1,6 @@
 defmodule Peers do
+    @self_peer_id :crypto.hash(:sha, "jyscao")
+
     def get(encoded_str) do
         %{"peers" => peers} = make_request(encoded_str) |> Bencode.decode()
         raw_peers_data = String.to_charlist(peers)
@@ -10,7 +12,7 @@ defmodule Peers do
 
         query_params = [
             info_hash:  Metainfo.get_info_hash_raw(encoded_str),
-            peer_id:    :crypto.hash(:sha, "jyscao"),
+            peer_id:    @self_peer_id,
             port:       6881,
             uploaded:   0,
             downloaded: 0,

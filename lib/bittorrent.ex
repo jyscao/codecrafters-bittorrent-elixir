@@ -19,9 +19,9 @@ defmodule Bittorrent.CLI do
                 peers = Peers.get(encoded_str)
                 IO.puts(Enum.join(peers, "\n"))
 
-            ["handshake", torrent_file, peer] ->
+            ["handshake", torrent_file, peer_addr] ->
                 {:ok, encoded_str} = File.read(torrent_file)
-                peer_id = Handshake.get_peer_id(encoded_str, peer)
+                peer_id = Handshake.get_peer_socket(peer_addr) |> Handshake.get_peer_id(encoded_str)
                 IO.puts("Peer ID: #{peer_id}")
 
             [command | _] ->

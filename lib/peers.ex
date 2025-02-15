@@ -2,9 +2,13 @@ defmodule Peers do
     @self_peer_id :crypto.hash(:sha, "jyscao")
 
     def get(encoded_str) do
-        %{"peers" => peers} = make_request(encoded_str) |> Bencode.decode()
-        raw_peers_data = String.to_charlist(peers)
-        decode_peer_ips(raw_peers_data, [])
+        encoded_str
+        |> make_request()
+        |> Bencode.decode()
+        |> Map.fetch!("peers")
+        |> String.to_charlist()
+        |> :binary.list_to_bin()
+        |> extract_peer_addrs([])
     end
 
     defp make_request(encoded_str) do
@@ -26,12 +30,7 @@ defmodule Peers do
         end
     end
 
-    defp decode_peer_ips([], ips), do: ips
-    defp decode_peer_ips([a, b, c, d, p1, p2 | rest], ips) do
-        port = get_binary_byte(p1) <> get_binary_byte(p2) |> String.to_integer(2)
-        ip = "#{a}.#{b}.#{c}.#{d}:#{port}"
-        decode_peer_ips(rest, [ip | ips])
-    end
-
-    defp get_binary_byte(num), do: Integer.to_string(num, 2) |> String.pad_leading(8, "0")
+    defp extract_peer_addrs(<<>>, addrs), do: addrs
+    defp extract_peer_addrs(<<a, b, c, d, port::16, rest::binary>>, addrs), do:
+        extract_peer_addrs(rest, ["#{a}.#{b}.#{c}.#{d}:#{port}" | addrs])
 end

@@ -12,7 +12,10 @@ defmodule Peers do
     end
 
     defp make_request(encoded_str) do
-        %{"announce" => tracker_url, "info" => %{"length" => file_size}} = Bencode.decode(encoded_str)
+        %{
+            "announce" => tracker_url,
+            "info"     => %{"length" => file_size}
+        } = Bencode.decode(encoded_str)
 
         query_params = [
             info_hash:  Metainfo.get_info_hash_raw(encoded_str),

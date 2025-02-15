@@ -26,8 +26,7 @@ defmodule Bittorrent.CLI do
 
             ["download_piece", "-o", output_location, torrent_file, pidx] ->
                 {:ok, encoded_str} = File.read(torrent_file)
-                {:ok, socket} = Message.prepare_piece_download(encoded_str)
-                Message.download_verify_and_save_piece!(encoded_str, socket, String.to_integer(pidx), output_location)
+                :ok = Message.download_piece!(encoded_str, String.to_integer(pidx), output_location)
 
             [command | _] ->
                 IO.puts("Unknown command: #{command}")

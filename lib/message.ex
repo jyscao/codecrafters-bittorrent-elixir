@@ -1,7 +1,13 @@
 defmodule Message do
     @block_len 16*1024
 
-    def prepare_piece_download(encoded_str) do
+    def download_piece!(encoded_str, pidx, output_location) do
+        {:ok, socket} = prepare_piece_download(encoded_str)
+        download_verify_and_save_piece!(encoded_str, socket, pidx, output_location)
+        :ok
+    end
+
+    defp prepare_piece_download(encoded_str) do
         with {:ok, socket} = get_connected_peer_socket(encoded_str),
             {:ok, _bf_resp} = get_bitfield(socket),
             :ok = inform_interest(socket),
@@ -11,7 +17,7 @@ defmodule Message do
         end
     end
 
-    def download_verify_and_save_piece!(encoded_str, socket, pidx, save_location) do
+    defp download_verify_and_save_piece!(encoded_str, socket, pidx, output_location) do
         %{
             file_length: file_length,
             piece_length: piece_length,
@@ -22,7 +28,7 @@ defmodule Message do
         with {:ok, piece} = download_piece(file_length, piece_length, socket, pidx),
             ^pidx_hash = :crypto.hash(:sha, piece) |> Base.encode16(case: :lower)
         do
-            File.write!(save_location, piece)
+            File.write!(output_location, piece)
         end
     end
 

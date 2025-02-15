@@ -24,6 +24,11 @@ defmodule Bittorrent.CLI do
                 peer_id = Handshake.get_peer_socket(peer_addr) |> Handshake.get_peer_id(encoded_str)
                 IO.puts("Peer ID: #{peer_id}")
 
+            ["download_piece", "-o", output_location, torrent_file, pidx] ->
+                {:ok, encoded_str} = File.read(torrent_file)
+                {:ok, socket} = Message.prepare_piece_download(encoded_str)
+                Message.download_verify_and_save_piece!(encoded_str, socket, String.to_integer(pidx), output_location)
+
             [command | _] ->
                 IO.puts("Unknown command: #{command}")
                 System.halt(1)

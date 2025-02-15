@@ -12,7 +12,7 @@ defmodule App.MixProject do
       deps: deps(),
     ]
   end
-  
+
   defp deps do
     [
       {:jason, "~> 1.4"},

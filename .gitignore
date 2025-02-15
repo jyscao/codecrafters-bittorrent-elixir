@@ -1,5 +1,6 @@
 **/.DS_Store
 bittorrent
+!lib/bittorrent
 
 # The directory Mix will write compiled artifacts to.
 /_build/

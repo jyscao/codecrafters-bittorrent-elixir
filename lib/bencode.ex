@@ -1,23 +1,22 @@
 defmodule Bencode do
-  def decode(encoded_value) when is_binary(encoded_value) do
-    [{_type, item}] = parse(:binary.bin_to_list(encoded_value), [])
-    item
-  end
+  def decode_file(torrent_file), do:
+    (with {:ok, benc_str} <- File.read(torrent_file), do: decode(benc_str), else: (err -> err))
+
+  def decode(benc_str) when is_binary(benc_str), do: parse(:binary.bin_to_list(benc_str), [])
   def decode(_), do: "Invalid encoded value: not binary"
 
   # parsing completed
-  defp parse([], parsed), do: parsed
+  defp parse([], [{_type, decoded}]), do: decoded
 
-  # parse integers
-  defp parse([?i | rest], parsed), do: parse(rest, [{:integer, []} | parsed])
-  # NOTE: integers need to be handled before strings, otherwise a decimal digit would be mistaken for a string length
-  defp parse([digit | rest], [{:integer, idr} | outers]) when ?0<=digit and digit<=?9 or digit===?-, do:
-    parse(rest, [{:integer, [digit | idr]} | outers])
-  defp parse([?e | rest], [{:integer, idr} | outers]) do
-    integer = Enum.reverse(idr) |> List.to_integer()
+  # parse integers (NOTE: integers must be handled before strings, otherwise decimal digits could be mistaken as string lengths)
+  defp parse([?i | rest], parsed), do: parse(rest, [{:int, []} | parsed])
+  defp parse([digit | rest], [{:int, digs_rev} | outers]) when ?0<=digit and digit<=?9 or digit===?-, do:
+    parse(rest, [{:int, [digit | digs_rev]} | outers])
+  defp parse([?e | rest], [{:int, digs_rev} | outers]) do
+    integer = Enum.reverse(digs_rev) |> List.to_integer()
     parsed = case outers do
-      []                                         -> [{:integer, integer}]
-      [{type, curr} | outers] when is_list(curr) -> [{type, [{:integer, integer} | curr]} | outers]
+      []                                         -> [{:int, integer}]
+      [{type, curr} | outers] when is_list(curr) -> [{type, [{:int, integer} | curr]} | outers]
     end
     parse(rest, parsed)
   end
@@ -25,17 +24,18 @@ defmodule Bencode do
   # parse strings
   defp parse([digit | rest], parsed) when ?0<=digit and digit<=?9 do
     parsed = case parsed do
-      [{:strlen, slr} | outers] -> [{:strlen, [digit | slr]} | outers]
-      _                         -> [{:strlen, [digit]} | parsed]
+      [{:strlen, slen_rev} | outers] -> [{:strlen, [digit | slen_rev]} | outers]
+      _                              -> [{:strlen, [digit]} | parsed]
     end
     parse(rest, parsed)
   end
-  defp parse([?: | rest], [{:strlen, slr} | outers]) do
-    strlen = Enum.reverse(slr) |> List.to_integer()
-    {word, rest} = {Enum.slice(rest, 0, strlen) |> List.to_string(), Enum.slice(rest, strlen..-1//1)}
+  defp parse([?: | rest], [{:strlen, slen_rev} | outers]) do
+    slen = Enum.reverse(slen_rev) |> List.to_integer()
+    word = Enum.slice(rest, 0, slen) |> List.to_string()
+    rest = Enum.slice(rest, slen..-1//1)
     parsed = case outers do
-      []                                         -> [{:string, word}]
-      [{type, curr} | outers] when is_list(curr) -> [{type, [{:string, word} | curr]} | outers]
+      []                                         -> [{:str, word}]
+      [{type, curr} | outers] when is_list(curr) -> [{type, [{:str, word} | curr]} | outers]
     end
     parse(rest, parsed)
   end
@@ -54,9 +54,9 @@ defmodule Bencode do
   # parse dictionaries
   defp parse([?d | rest], parsed), do: parse(rest, [{:dict, []} | parsed])
   defp parse([?e | rest], [{:dict, dict} | outers]) do
-    dict = Stream.chunk_every(dict, 2) |> Map.new(fn [{_val_t, val}, {:string, key}] -> {key, val} end)
+    dict = Stream.chunk_every(dict, 2) |> Map.new(fn [{_t, val}, {:str, key}] -> {key, val} end)
     parsed = case outers do
-      [] -> [{:dict, dict}]
+      []                                         -> [{:dict, dict}]
       [{type, curr} | outers] when is_list(curr) -> [{type, [{:dict, dict} | curr]} | outers]
     end
     parse(rest, parsed)

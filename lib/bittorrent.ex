@@ -1,9 +1,14 @@
 defmodule Bittorrent.CLI do
   def main(argv) do
     case argv do
-      ["decode" | [encoded_str | _]] ->
-        decoded_str = Bencode.decode(encoded_str)
-        IO.puts(Jason.encode!(decoded_str))
+      ["decode", input | _] ->
+        decoded_data = cond do
+          String.ends_with?(input, ".torrent")
+            -> Bencode.decode_file(input)
+          true
+            -> Bencode.decode(input)
+        end
+        Jason.encode!(decoded_data) |> IO.puts()
 
       ["info", torrent_file] ->
         {:ok, encoded_str} = File.read(torrent_file)
@@ -42,5 +47,3 @@ defmodule Bittorrent.CLI do
     end
   end
 end
-
-# example - d8:announce35:http://tracker.example.com/announce4:infod6:lengthi12345e4:name10:sample.txt12:piece lengthi65536e6:pieces20:abcdefghij1234567890e8:url-list29:http://example.com/sample.txte

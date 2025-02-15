@@ -3,7 +3,7 @@ defmodule Peers do
 
   def get(encoded_str) do
     encoded_str
-    |> make_request()
+    |> make_tracker_request()
     |> Bencode.decode()
     |> Map.fetch!("peers")
     |> String.to_charlist()
@@ -11,7 +11,7 @@ defmodule Peers do
     |> extract_peer_addrs([])
   end
 
-  defp make_request(encoded_str) do
+  defp make_tracker_request(encoded_str) do
     %{
       "announce" => tracker_url,
       "info"     => %{"length" => file_size}

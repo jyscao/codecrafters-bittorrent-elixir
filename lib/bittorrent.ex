@@ -28,6 +28,10 @@ defmodule Bittorrent.CLI do
                 {:ok, encoded_str} = File.read(torrent_file)
                 :ok = Message.download_piece!(encoded_str, String.to_integer(pidx), output_location)
 
+            ["download", "-o", output_location, torrent_file] ->
+                {:ok, encoded_str} = File.read(torrent_file)
+                :ok = Message.download_file(encoded_str, output_location)
+
             [command | _] ->
                 IO.puts("Unknown command: #{command}")
                 System.halt(1)

@@ -1,6 +1,28 @@
 defmodule Message do
     @block_len 16*1024
 
+    def download_file(encoded_str, output_location) do
+        %{
+            file_length: file_length,
+            piece_length: piece_length,
+            piece_hashes: piece_hashes,
+        } = Metainfo.get_all(encoded_str)
+
+        {n_pieces, _lp_size} = calc_pieces_count_and_lp_size(file_length, piece_length)
+        :ok = download_all_pieces!(encoded_str, n_pieces, output_location)
+        :ok = combine_pieces(n_pieces, output_location) |> then(&(File.write!(output_location, &1)))
+    end
+
+    defp download_all_pieces!(encoded_str, n_pieces, output_location) do
+        {:ok, socket} = prepare_piece_download(encoded_str)
+        0..n_pieces-1
+        |> Enum.each(&(download_verify_and_save_piece!(encoded_str, socket, &1, "#{output_location}.piece#{&1}")))
+        :ok
+    end
+
+    defp combine_pieces(n_pieces, output_location), do:
+        0..n_pieces-1 |> Enum.reduce(<<>>, fn pidx, combined -> combined <> File.read!("#{output_location}.piece#{pidx}") end)
+
     def download_piece!(encoded_str, pidx, output_location) do
         {:ok, socket} = prepare_piece_download(encoded_str)
         download_verify_and_save_piece!(encoded_str, socket, pidx, output_location)

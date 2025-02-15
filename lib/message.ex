@@ -5,7 +5,7 @@ defmodule Message do
         %{
             file_length: file_length,
             piece_length: piece_length,
-            piece_hashes: piece_hashes,
+            piece_hashes: _piece_hashes,
         } = Metainfo.get_all(encoded_str)
 
         {n_pieces, _lp_size} = calc_pieces_count_and_lp_size(file_length, piece_length)

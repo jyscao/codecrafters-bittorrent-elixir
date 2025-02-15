@@ -7,7 +7,7 @@ defmodule App.MixProject do
       app: :bittorrent,
       version: "1.0.0",
       escript: [main_module: Bittorrent.CLI],
-      elixir: "~> 1.14",
+      elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
     ]
@@ -17,6 +17,7 @@ defmodule App.MixProject do
     [
       {:jason, "~> 1.4"},
       {:req, "~> 0.5.0"},
+      {:shorthand, "~> 1.0"},
     ]
   end
 end

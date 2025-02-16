@@ -1,4 +1,7 @@
 defmodule Bittorrent.CLI do
+  import Shorthand
+  alias Bittorrent.Metainfo
+
   def main(argv) do
     case argv do
       ["decode", input | _] ->
@@ -11,13 +14,12 @@ defmodule Bittorrent.CLI do
         Jason.encode!(decoded_data) |> IO.puts()
 
       ["info", torrent_file] ->
-        {:ok, encoded_str} = File.read(torrent_file)
-        metainfo = Metainfo.get_all(encoded_str)
-        IO.puts("Tracker URL: #{metainfo.tracker_url}")
-        IO.puts("Length: #{metainfo.file_length}")
-        IO.puts("Info Hash: #{metainfo.info_hash}")
-        IO.puts("Piece Length: #{metainfo.piece_length}")
-        IO.puts("Piece Hashes:\n#{Enum.join(metainfo.piece_hashes, "\n")}")
+        m(tracker_url, file_length, piece_length, piece_hashes) = Metainfo.extract_from_file(torrent_file)
+        IO.puts("Tracker URL: #{tracker_url}")
+        IO.puts("Length: #{file_length}")
+        IO.puts("Info Hash: #{Metainfo.compute_info_hash(torrent_file)}")
+        IO.puts("Piece Length: #{piece_length}")
+        IO.puts("Piece Hashes:\n#{Enum.join(piece_hashes, "\n")}")
 
       ["peers", torrent_file] ->
         {:ok, encoded_str} = File.read(torrent_file)

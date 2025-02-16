@@ -1,6 +1,6 @@
 defmodule Bittorrent.CLI do
   import Shorthand
-  alias Bittorrent.Metainfo
+  alias Bittorrent.{Metainfo, Peer}
 
   def main(argv) do
     case argv do
@@ -22,9 +22,10 @@ defmodule Bittorrent.CLI do
         IO.puts("Piece Hashes:\n#{Enum.join(piece_hashes, "\n")}")
 
       ["peers", torrent_file] ->
-        {:ok, encoded_str} = File.read(torrent_file)
-        peers = Peers.get(encoded_str)
-        IO.puts(Enum.join(peers, "\n"))
+        Peer.get_all_using_file(torrent_file)
+        |> Stream.map(fn {ip_octs, port} -> "#{Enum.join(ip_octs, ".")}:#{port}" end)
+        |> Enum.join("\n")
+        |> IO.puts()
 
       ["handshake", torrent_file, peer_addr] ->
         {:ok, encoded_str} = File.read(torrent_file)

@@ -5,7 +5,7 @@ defmodule Bittorrent.Metainfo do
 
   def compute_info_hash(torrent_file, format \\ :base16) do
     with {:ok, benc_str} <- File.read(torrent_file),
-      info_hash_raw <- find_and_calc_info_hash(benc_str)
+      info_hash_raw <- find_and_compute_info_hash(benc_str)
     do
       case format do
         :base16 -> Base.encode16(info_hash_raw, case: :lower)
@@ -30,7 +30,7 @@ defmodule Bittorrent.Metainfo do
     m(tracker_url, file_length, piece_length, piece_hashes)
   end
 
-  defp find_and_calc_info_hash(benc_str) when is_binary(benc_str) do
+  defp find_and_compute_info_hash(benc_str) when is_binary(benc_str) do
     :binary.bin_to_list(benc_str)
     |> find_info_start()
     |> find_info_content(0, [])

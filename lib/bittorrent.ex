@@ -27,9 +27,8 @@ defmodule Bittorrent.CLI do
         |> Enum.join("\n")
         |> IO.puts()
 
-      ["handshake", torrent_file, peer_addr] ->
-        {:ok, encoded_str} = File.read(torrent_file)
-        peer_id = Handshake.get_peer_socket(peer_addr) |> Handshake.get_peer_id(encoded_str)
+      ["handshake", torrent_file, peer_addr_str] ->
+        {:ok, peer_id} = Peer.shake_hand_and_get_peer_id(torrent_file, convert_addr_str(peer_addr_str))
         IO.puts("Peer ID: #{peer_id}")
 
       ["download_piece", "-o", output_location, torrent_file, pidx] ->
@@ -48,5 +47,13 @@ defmodule Bittorrent.CLI do
         IO.puts("Usage: your_bittorrent.sh <command> <args>")
         System.halt(1)
     end
+  end
+
+  defp convert_addr_str(addr_str) do
+    [ipv4_str, port_str] = String.split(addr_str, ":", parts: 2)
+    {
+      String.split(ipv4_str, ".", parts: 4) |> Enum.map(&(String.to_integer(&1))) |> List.to_tuple(),
+      String.to_integer(port_str)
+    }
   end
 end

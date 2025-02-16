@@ -1,6 +1,6 @@
 defmodule Bittorrent.Peer do
   import Shorthand
-  alias Bittorrent.Metainfo
+  alias Bittorrent.{Metainfo, Peer.TcpMessage}
 
   @self_peer_id :crypto.hash(:sha, "jyscao")
 
@@ -43,4 +43,26 @@ defmodule Bittorrent.Peer do
   defp extract_peer_addrs(<<>>, addrs), do: addrs
   defp extract_peer_addrs(<<a, b, c, d, port::16, rest::binary>>, addrs), do:
     extract_peer_addrs(rest, [{{a, b, c, d}, port}| addrs])
+
+
+  def shake_hand_and_get_peer_id(torrent_file, peer_addr) do
+    with info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
+      {:ok, socket} <- TcpMessage.connect(peer_addr),
+      {:ok, hs_resp} <- TcpMessage.do_handshake(socket, info_hash, @self_peer_id)
+    do
+      extract_peer_id(hs_resp, info_hash)
+    else
+      err -> err
+    end
+  end
+
+  # NOTE: some peers responds to the handshake w/ an extra 6-bytes of data after the 20-bytes
+  #       ID (at least some of CodeCrafters' peers); thus ignore the rest w/ the _rest binary
+  defp extract_peer_id(<<header_int::160, _ext_bytes::64, hash_int::160, pid_int::160, _rest::binary>>, info_hash) do
+    with <<19>> <> "BitTorrent protocol" = :binary.encode_unsigned(header_int),
+      ^info_hash = :binary.encode_unsigned(hash_int)
+    do
+      {:ok, :binary.encode_unsigned(pid_int) |> Base.encode16(case: :lower)}
+    end
+  end
 end

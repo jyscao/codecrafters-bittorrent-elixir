@@ -42,5 +42,5 @@ defmodule Bittorrent.Peer do
 
   defp extract_peer_addrs(<<>>, addrs), do: addrs
   defp extract_peer_addrs(<<a, b, c, d, port::16, rest::binary>>, addrs), do:
-    extract_peer_addrs(rest, [{[a, b, c, d], port}| addrs])
+    extract_peer_addrs(rest, [{{a, b, c, d}, port}| addrs])
 end

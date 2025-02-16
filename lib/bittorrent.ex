@@ -23,7 +23,7 @@ defmodule Bittorrent.CLI do
 
       ["peers", torrent_file] ->
         Peer.get_all_using_file(torrent_file)
-        |> Stream.map(fn {ip_octs, port} -> "#{Enum.join(ip_octs, ".")}:#{port}" end)
+        |> Stream.map(fn {{a,b,c,d}, port} -> "#{a}.#{b}.#{c}.#{d}:#{port}" end)
         |> Enum.join("\n")
         |> IO.puts()
 

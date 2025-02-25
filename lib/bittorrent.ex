@@ -1,6 +1,6 @@
 defmodule Bittorrent.CLI do
   import Shorthand
-  alias Bittorrent.{Metainfo, Peer}
+  alias Bittorrent.{Metainfo, Peer, Download}
 
   def main(argv) do
     case argv do
@@ -32,15 +32,10 @@ defmodule Bittorrent.CLI do
         IO.puts("Peer ID: #{peer_id}")
 
       ["download_piece", "-o", output_location, torrent_file, pidx] ->
-        {:ok, encoded_str} = File.read(torrent_file)
-        :ok = Message.download_piece!(encoded_str, String.to_integer(pidx), output_location)
+        Download.download_piece(torrent_file, pidx, output_location)
 
-      ["download", "-o", output_location, torrent_file] ->
-        {:ok, encoded_str} = File.read(torrent_file)
-        :ok = Message.download_file(encoded_str, output_location)
-
-      [command | _] ->
-        IO.puts("Unknown command: #{command}")
+      [command | args] ->
+        IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)
 
       [] ->

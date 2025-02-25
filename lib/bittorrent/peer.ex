@@ -65,4 +65,28 @@ defmodule Bittorrent.Peer do
       {:ok, :binary.encode_unsigned(pid_int) |> Base.encode16(case: :lower)}
     end
   end
+
+
+  def prime_all_to_download(torrent_file) do
+    with %{} = metainfo <- Metainfo.extract_from_file(torrent_file),
+      info_hash = Metainfo.compute_info_hash(torrent_file, :raw),
+      peer_addrs = get_peer_addrs_ls(metainfo, info_hash),
+      dl_primer = mk_download_primer(info_hash)
+    do
+      {:ok, Enum.map(peer_addrs, dl_primer)}
+    end
+  end
+
+  defp mk_download_primer(info_hash) do
+    fn peer_addr ->
+      with {:ok, socket} <- TcpMessage.connect(peer_addr),
+        {:ok, _resp} <- TcpMessage.do_handshake(socket, info_hash, @self_peer_id),
+        :ok <- TcpMessage.pre_download_chitchat(socket)
+      do
+        socket
+      else
+        err -> err
+      end
+    end
+  end
 end

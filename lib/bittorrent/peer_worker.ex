@@ -1,7 +1,7 @@
-defmodule Bittorrent.Downloader do
+defmodule Bittorrent.Peer.Worker do
   use GenServer
 
-  alias Bittorrent.{Metainfo, Peer, Peer.TcpMessage, PieceArithmetic}
+  alias Bittorrent.{Metainfo, Peer}
 
   @block_length 16*1024   # 16 KiB
   @self_peer_id :crypto.hash(:sha, "jyscao")
@@ -12,18 +12,8 @@ defmodule Bittorrent.Downloader do
   @msg_request      6
   @msg_piece        7
 
-  def start(torrent_file) do
-    with %{} = metainfo <- Metainfo.extract_from_file(torrent_file),
-      info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
-      peer_addrs <- Peer.get_all_using_file(torrent_file),
-      workers = Enum.map(peer_addrs, &(start_worker(info_hash, &1))) |> Enum.map(fn {:ok, pid} -> pid end)
-    do
-      Enum.each(workers, &(do_handshake(&1) and inform_interest(&1)))
-      workers
-    end
-  end
 
-  def start_worker(info_hash, peer_addr) do
+  def start(info_hash, peer_addr) do
     initial_state = %{
       info_hash: info_hash,
       peer_addr: peer_addr,
@@ -42,8 +32,9 @@ defmodule Bittorrent.Downloader do
   # callbacks
 
   @impl true
-  def init(%{peer_addr: peer_addr} = state) do
-    with {:ok, socket} = TcpMessage.connect(peer_addr) do
+  def init(%{peer_addr: {ipv4, port}} = state) do
+    opts = [:binary, active: true]
+    with {:ok, socket} = :gen_tcp.connect(ipv4, port, opts) do
       {:ok, %{state | socket: socket}}
     end
   end

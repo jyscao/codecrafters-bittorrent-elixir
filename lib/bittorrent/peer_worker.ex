@@ -97,7 +97,7 @@ defmodule Bittorrent.Peer.Worker do
                 -> {:reply, {true, peer_id}, state}
 
               <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>
-                -> %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+                -> %{"m" => %{"ut_metadata" => peer_ext_id}} = Bencode.decode(ext_dict)
                 {:reply, {true, peer_id}, %{state | ext_id: peer_ext_id}}
 
               _ -> raise("this should never be reached")
@@ -137,7 +137,7 @@ defmodule Bittorrent.Peer.Worker do
         -> {:noreply, state}
 
       <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>
-        -> %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+        -> %{"m" => %{"ut_metadata" => peer_ext_id}} = Bencode.decode(ext_dict)
         state = %{state | ext_id: peer_ext_id}
         if Map.has_key?(state, :client) do
           %{client: client} = state
@@ -154,7 +154,7 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_info({:tcp, _socket, <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>}, state) do
-    %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+    %{"m" => %{"ut_metadata" => peer_ext_id}} = Bencode.decode(ext_dict)
 
     state = %{state | ext_id: peer_ext_id}
     if Map.has_key?(state, :client) do

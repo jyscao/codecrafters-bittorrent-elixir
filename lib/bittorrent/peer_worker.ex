@@ -1,8 +1,6 @@
 defmodule Bittorrent.Peer.Worker do
   use GenServer
 
-  alias Bittorrent.{Metainfo, Peer}
-
   @block_length 16*1024   # 16 KiB
   @self_peer_id :crypto.hash(:sha, "jyscao")
 
@@ -46,7 +44,7 @@ defmodule Bittorrent.Peer.Worker do
 
     receive do
       # somtimes the bitfield message is sent together with the handshake response, which would be bound to _rest
-      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, info_hash::160, peer_id::160, _rest::binary>>}
+      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, _info_hash::160, peer_id::160, _rest::binary>>}
         -> {:reply, peer_id, state}
 
       _ -> raise("this should never be reached")

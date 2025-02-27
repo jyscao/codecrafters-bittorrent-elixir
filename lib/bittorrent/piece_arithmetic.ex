@@ -21,7 +21,7 @@ defmodule Bittorrent.PieceArithmetic do
   end
 
   defp get_blocks_range_and_lb_size(pidx, piece_length, n_pieces, lp_size) do
-    {n_blocks, lb_size} = if pidx === n_pieces-1 do
+    if pidx === n_pieces-1 do
       calc_last_piece_blocks_count_and_lb_size(lp_size)
     else
       {div(piece_length, @block_length), @block_length}

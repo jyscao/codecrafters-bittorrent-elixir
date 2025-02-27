@@ -48,8 +48,7 @@ defmodule Bittorrent.Download do
   end
 
   defp ready_workers(torrent_file) do
-    with %{} = metainfo <- Metainfo.extract_from_file(torrent_file),
-      info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
+    with info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
       peer_addrs <- Peer.get_all_using_file(torrent_file),
       workers = Enum.map(peer_addrs, &(Worker.start(info_hash, &1))) |> Enum.map(fn {:ok, pid} -> pid end),
       worker_statuses = Enum.map(workers, &(Worker.do_handshake(&1) && Worker.inform_interest(&1))),

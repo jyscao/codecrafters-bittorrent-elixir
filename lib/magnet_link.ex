@@ -23,7 +23,7 @@ defmodule MagnetLink do
       info_hash = :binary.decode_hex(params[:xt]),
       peer = get_peers_from_tracker(tracker_url, info_hash) |> hd(),
       {:ok, pid} = Worker.start(info_hash, peer),
-      peer_id_int = Worker.do_handshake(pid)
+      peer_id_int = Worker.do_magnet_handshake(pid)
     do
       {:ok, :binary.encode_unsigned(peer_id_int) |> Base.encode16(case: :lower)}
     end

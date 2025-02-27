@@ -53,7 +53,7 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_call(:magnet_handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
-    handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 10, 0::16>> <> info_hash <> @self_peer_id
+    handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 16, 0::16>> <> info_hash <> @self_peer_id
     :ok = :gen_tcp.send(socket, handshake_msg)
 
     receive do

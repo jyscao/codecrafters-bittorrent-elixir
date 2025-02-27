@@ -37,6 +37,11 @@ defmodule Bittorrent.CLI do
       ["download", "-o", output_location, torrent_file] ->
         Download.download_all(torrent_file, output_location)
 
+      ["magnet_parse", magnet_link] ->
+        params = MagnetLink.parse(magnet_link)
+        IO.puts("Tracker URL: #{params[:tr]}")
+        IO.puts("Info Hash: #{params[:xt]}")
+
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)

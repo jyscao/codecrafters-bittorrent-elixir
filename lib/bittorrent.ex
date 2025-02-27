@@ -32,7 +32,10 @@ defmodule Bittorrent.CLI do
         IO.puts("Peer ID: #{peer_id}")
 
       ["download_piece", "-o", output_location, torrent_file, pidx] ->
-        Download.download_piece(torrent_file, pidx, output_location)
+        Download.download_piece(torrent_file, String.to_integer(pidx), output_location)
+
+      ["download", "-o", output_location, torrent_file] ->
+        Download.download_all(torrent_file, output_location)
 
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")

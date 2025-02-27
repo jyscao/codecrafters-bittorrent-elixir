@@ -66,7 +66,7 @@ defmodule Bittorrent.Peer.Worker do
   def handle_call({:request, {pce, blk, blen}}, _from, %{socket: socket, readied: true} = state) do
     blk_begin = blk * @block_length
     payload = <<@msg_request>> <> ext_32b(pce) <> ext_32b(blk_begin) <> ext_32b(blen)
-    :ok = :gen_tcp.send(socket, ext_32b(bit_size(payload)) <> payload)
+    :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
 
     block = receive do
       {:tcp, _socket, <<payload_len::32, @msg_piece, ^pce::32, ^blk_begin::32, init_chunk::binary>>} ->

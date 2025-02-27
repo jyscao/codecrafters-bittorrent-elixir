@@ -18,6 +18,7 @@ defmodule Bittorrent.Peer.Worker do
       peer_addr: peer_addr,
       socket: nil,
       readied: false,
+      ext_id: nil,
     }
     GenServer.start(__MODULE__, initial_state)
   end
@@ -84,8 +85,25 @@ defmodule Bittorrent.Peer.Worker do
     :ok = :gen_tcp.send(socket, handshake_msg)
 
     receive do
-      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_head::43, 1::1, _ext_tail::20, _info_hash::160, peer_id::160, _rest::binary>>}
-        -> {:reply, {true, peer_id}, state}
+      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_head::43, 1::1, _ext_tail::20, _info_hash::160, peer_id::160, rest::binary>>} ->
+        case rest do
+          <<>>
+            -> {:reply, {true, peer_id}, state}
+
+          <<bf_size::32, @msg_bitfield, _bitfield::size((bf_size-1)*8), remain::binary>>
+            -> case remain do
+              <<>>
+                -> {:reply, {true, peer_id}, state}
+
+              <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>
+                -> %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+                {:reply, {true, peer_id}, %{state | ext_id: peer_ext_id}}
+
+              _ -> raise("this should never be reached")
+            end
+
+          _ -> raise("this should never be reached")
+        end
 
       {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, _info_hash::160, peer_id::160, _rest::binary>>}
         -> {:reply, {false, peer_id}, state}
@@ -94,22 +112,57 @@ defmodule Bittorrent.Peer.Worker do
     end
   end
 
-  def handle_call(:extension_handshake, _from, %{socket: socket} = state) do
+  def handle_call(:extension_handshake, from, %{socket: socket} = state) do
     payload = <<@msg_extension, 0>> <> "d1:md11:ut_metadatai193eee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
 
-    receive do
-      {:tcp, _socket, <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>}
-        -> {:reply, ext_dict, state}
-
-      _ -> raise("this should never be reached")
+    if not is_nil(state.ext_id) do
+      {:reply, state.ext_id, state}
+    else
+      {:noreply, Map.put_new(state, :client, from)}
     end
   end
 
   @impl true
-  def handle_info({:tcp, _socket, <<_msg_size::32, @msg_bitfield, _bitfield::binary>>}, state), do: {:noreply, state}
+  def handle_info({:tcp, _socket, <<bf_size::32, @msg_bitfield, _bitfield::size((bf_size-1)*8), rest::binary>>}, state) do
+    case rest do
+      <<>>
+        -> {:noreply, state}
 
-  def handle_info({:tcp, _socket, _msg}, state), do: {:noreply, state}
+      <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>
+        -> %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+        state = %{state | ext_id: peer_ext_id}
+        if Map.has_key?(state, :client) do
+          %{client: client} = state
+          GenServer.reply(client, state.ext_id)
+          {:noreply, Map.delete(state, :client)}
+        else
+          {:noreply, state}
+        end
+
+      _ -> raise("this should never be reached")
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info({:tcp, _socket, <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>}, state) do
+    %{"m" => %{"ut_metadata" => peer_ext_id}} = edd = Bencode.decode(ext_dict)
+
+    state = %{state | ext_id: peer_ext_id}
+    if Map.has_key?(state, :client) do
+      %{client: client} = state
+      GenServer.reply(client, state.ext_id)
+      {:noreply, Map.delete(state, :client)}
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_info(msg, state) do
+    {:noreply, state}
+  end
+
 
 
   # helper functions

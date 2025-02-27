@@ -22,6 +22,7 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def do_handshake(pid), do: GenServer.call(pid, :handshake)
+  def do_magnet_handshake(pid), do: GenServer.call(pid, :magnet_handshake)
   def inform_interest(pid), do: GenServer.call(pid, :interested)
   def download_block(pid, blk_tup), do: GenServer.call(pid, {:request, blk_tup})
 
@@ -40,6 +41,19 @@ defmodule Bittorrent.Peer.Worker do
   @impl true
   def handle_call(:handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
     handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::64>> <> info_hash <> @self_peer_id
+    :ok = :gen_tcp.send(socket, handshake_msg)
+
+    receive do
+      # somtimes the bitfield message is sent together with the handshake response, which would be bound to _rest
+      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, _info_hash::160, peer_id::160, _rest::binary>>}
+        -> {:reply, peer_id, state}
+
+      _ -> raise("this should never be reached")
+    end
+  end
+
+  def handle_call(:magnet_handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
+    handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 10, 0::16>> <> info_hash <> @self_peer_id
     :ok = :gen_tcp.send(socket, handshake_msg)
 
     receive do

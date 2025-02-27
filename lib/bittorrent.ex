@@ -42,6 +42,10 @@ defmodule Bittorrent.CLI do
         IO.puts("Tracker URL: #{params[:tr]}")
         IO.puts("Info Hash: #{params[:xt]}")
 
+      ["magnet_handshake", magnet_link] ->
+        {:ok, peer_id} = MagnetLink.shake_hand_and_get_peer_id(magnet_link)
+        IO.puts("Peer ID: #{peer_id}")
+
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)

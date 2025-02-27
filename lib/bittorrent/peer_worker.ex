@@ -9,6 +9,7 @@ defmodule Bittorrent.Peer.Worker do
   @msg_bitfield     5
   @msg_request      6
   @msg_piece        7
+  @msg_extension    20
 
 
   def start(info_hash, peer_addr) do
@@ -22,9 +23,11 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def do_handshake(pid), do: GenServer.call(pid, :handshake)
-  def do_magnet_handshake(pid), do: GenServer.call(pid, :magnet_handshake)
   def inform_interest(pid), do: GenServer.call(pid, :interested)
   def download_block(pid, blk_tup), do: GenServer.call(pid, {:request, blk_tup})
+
+  def do_magnet_handshake(pid), do: GenServer.call(pid, :magnet_handshake)
+  def do_extension_handshake(pid), do: GenServer.call(pid, :extension_handshake)
 
 
 
@@ -41,19 +44,6 @@ defmodule Bittorrent.Peer.Worker do
   @impl true
   def handle_call(:handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
     handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::64>> <> info_hash <> @self_peer_id
-    :ok = :gen_tcp.send(socket, handshake_msg)
-
-    receive do
-      # somtimes the bitfield message is sent together with the handshake response, which would be bound to _rest
-      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, _info_hash::160, peer_id::160, _rest::binary>>}
-        -> {:reply, peer_id, state}
-
-      _ -> raise("this should never be reached")
-    end
-  end
-
-  def handle_call(:magnet_handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
-    handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 16, 0::16>> <> info_hash <> @self_peer_id
     :ok = :gen_tcp.send(socket, handshake_msg)
 
     receive do
@@ -89,9 +79,31 @@ defmodule Bittorrent.Peer.Worker do
     {:reply, block, state}
   end
 
+  def handle_call(:magnet_handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
+    handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 16, 0::16>> <> info_hash <> @self_peer_id
+    :ok = :gen_tcp.send(socket, handshake_msg)
+
+    receive do
+      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_head::43, 1::1, _ext_tail::20, _info_hash::160, peer_id::160, _rest::binary>>}
+        -> {:reply, {true, peer_id}, state}
+
+      {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, _info_hash::160, peer_id::160, _rest::binary>>}
+        -> {:reply, {false, peer_id}, state}
+
+      _ -> raise("this should never be reached")
+    end
+  end
+
+  def handle_call(:extension_handshake, _from, %{socket: socket} = state) do
+    payload = <<@msg_extension, 0>> <> "d1:md11:ut_metadatai193eee"
+    :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
+    {:reply, nil, state}
+  end
+
   @impl true
   def handle_info({:tcp, _socket, <<_msg_size::32, @msg_bitfield, _bitfield::binary>>}, state), do: {:noreply, state}
 
+  def handle_info({:tcp, _socket, _msg}, state), do: {:noreply, state}
 
 
   # helper functions

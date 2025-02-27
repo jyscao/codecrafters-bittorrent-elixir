@@ -26,9 +26,13 @@ defmodule MagnetLink do
       {metadata_ext?, peer_id_int} = Worker.do_magnet_handshake(pid)
     do
       if metadata_ext? do
-        Worker.do_extension_handshake(pid)
+        with ext_dict = Worker.do_extension_handshake(pid) do
+          %{"m" => %{"ut_metadata" => peer_ext_id}} = Bencode.decode(ext_dict) # |> IO.inspect(label: "extension dict")
+          {:ok, {:binary.encode_unsigned(peer_id_int) |> Base.encode16(case: :lower), peer_ext_id}}
+        end
+      else
+        {:ok, {:binary.encode_unsigned(peer_id_int) |> Base.encode16(case: :lower), nil}}
       end
-      {:ok, :binary.encode_unsigned(peer_id_int) |> Base.encode16(case: :lower)}
     end
   end
 

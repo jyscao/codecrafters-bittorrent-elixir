@@ -43,8 +43,9 @@ defmodule Bittorrent.CLI do
         IO.puts("Info Hash: #{params[:xt]}")
 
       ["magnet_handshake", magnet_link] ->
-        {:ok, peer_id} = MagnetLink.shake_hand_and_get_peer_id(magnet_link)
+        {:ok, {peer_id, peer_ext_id}} = MagnetLink.shake_hand_and_get_peer_id(magnet_link)
         IO.puts("Peer ID: #{peer_id}")
+        IO.puts("Peer Metadata Extension ID: #{peer_ext_id}")
 
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")

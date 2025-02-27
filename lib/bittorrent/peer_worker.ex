@@ -97,7 +97,13 @@ defmodule Bittorrent.Peer.Worker do
   def handle_call(:extension_handshake, _from, %{socket: socket} = state) do
     payload = <<@msg_extension, 0>> <> "d1:md11:ut_metadatai193eee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
-    {:reply, nil, state}
+
+    receive do
+      {:tcp, _socket, <<_msg_size::32, @msg_extension, 0, ext_dict::binary>>}
+        -> {:reply, ext_dict, state}
+
+      _ -> raise("this should never be reached")
+    end
   end
 
   @impl true

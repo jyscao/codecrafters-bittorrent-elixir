@@ -47,7 +47,7 @@ defmodule Bittorrent.Peer.Worker do
     receive do
       # somtimes the bitfield message is sent together with the handshake response, which would be bound to _rest
       {:tcp, _socket, <<19>> <> "BitTorrent protocol" <> <<_ext_bytes::64, info_hash::160, peer_id::160, _rest::binary>>}
-        -> {:reply, true, state}
+        -> {:reply, peer_id, state}
 
       _ -> raise("this should never be reached")
     end

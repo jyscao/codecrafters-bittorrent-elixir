@@ -52,7 +52,7 @@ defmodule Bittorrent.Download do
       info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
       peer_addrs <- Peer.get_all_using_file(torrent_file),
       workers = Enum.map(peer_addrs, &(Worker.start(info_hash, &1))) |> Enum.map(fn {:ok, pid} -> pid end),
-      worker_statuses = Enum.map(workers, &(Worker.do_handshake(&1) and Worker.inform_interest(&1))),
+      worker_statuses = Enum.map(workers, &(Worker.do_handshake(&1) && Worker.inform_interest(&1))),
       ^worker_statuses = List.duplicate(true, length(workers))
     do
       workers

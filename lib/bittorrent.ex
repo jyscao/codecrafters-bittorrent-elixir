@@ -47,6 +47,9 @@ defmodule Bittorrent.CLI do
         IO.puts("Peer ID: #{peer_id}")
         IO.puts("Peer Metadata Extension ID: #{peer_ext_id}")
 
+      ["magnet_info", magnet_link] ->
+        MagnetLink.request_metadata(magnet_link)
+
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)

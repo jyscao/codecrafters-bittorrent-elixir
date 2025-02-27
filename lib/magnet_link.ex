@@ -35,6 +35,22 @@ defmodule MagnetLink do
     end
   end
 
+  def request_metadata(link) do
+    with params = MagnetLink.parse(link),
+      tracker_url = params[:tr],
+      info_hash = :binary.decode_hex(params[:xt]),
+      peer = get_peers_from_tracker(tracker_url, info_hash) |> hd(),
+      {:ok, pid} = Worker.start(info_hash, peer),
+      {true, _peer_id_int} = Worker.do_magnet_handshake(pid),
+      _peer_ext_id = Worker.do_extension_handshake(pid)
+    do
+      Worker.request_metadata(pid)
+    end
+  end
+
+
+  # helper functions
+
   def get_peers_from_tracker(tracker_url, info_hash) do
     query_params = [
       info_hash:  info_hash,

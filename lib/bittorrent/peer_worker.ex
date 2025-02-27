@@ -29,6 +29,7 @@ defmodule Bittorrent.Peer.Worker do
 
   def do_magnet_handshake(pid), do: GenServer.call(pid, :magnet_handshake)
   def do_extension_handshake(pid), do: GenServer.call(pid, :extension_handshake)
+  def request_metadata(pid), do: GenServer.call(pid, :request_metadata)
 
 
 
@@ -121,6 +122,12 @@ defmodule Bittorrent.Peer.Worker do
     else
       {:noreply, Map.put_new(state, :client, from)}
     end
+  end
+
+  def handle_call(:request_metadata, _from, %{socket: socket, ext_id: ext_id} = state) do
+    payload = <<@msg_extension, ext_id>> <> "d8:msg_typei0e5:piecei0ee"
+    :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
+    {:reply, true, state}
   end
 
   @impl true

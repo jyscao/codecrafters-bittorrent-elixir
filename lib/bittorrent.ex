@@ -55,6 +55,9 @@ defmodule Bittorrent.CLI do
         IO.puts("Piece Length: #{piece_length}")
         IO.puts("Piece Hashes:\n#{Enum.join(piece_hashes, "\n")}")
 
+      ["magnet_download_piece", "-o", output_location, magnet_link, pidx] ->
+        MagnetLink.download_piece(magnet_link, String.to_integer(pidx), output_location)
+
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)

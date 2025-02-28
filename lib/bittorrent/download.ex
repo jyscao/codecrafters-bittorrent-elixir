@@ -47,6 +47,25 @@ defmodule Bittorrent.Download do
     end
   end
 
+  def magnet_download_piece(info_dict, info_hash, worker_pids, piece_idx, output_location) do
+    with workers = magnet_ready_workers(info_dict, info_hash, worker_pids),
+      blocks = magnet_divide_pieces_into_blocks(info_dict, piece_idx),
+      %{piece_hashes: hashes} = info_dict
+    do
+      piece_data = Stream.chunk_every(blocks, length(workers))
+        |> Stream.flat_map(
+          &(Enum.zip(workers, &1)
+            |> Enum.map(fn {pid, blk} -> Task.async(Worker, :download_block, [pid, blk]) end)
+            |> Enum.map(fn task -> Task.await(task) end)
+          ))
+        |> Enum.join()
+
+      with true = verify_piece(hashes, piece_idx, piece_data) do
+        File.write!(output_location, piece_data)
+      end
+    end
+  end
+
   defp ready_workers(torrent_file) do
     with info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
       peer_addrs <- Peer.get_all_using_file(torrent_file),
@@ -60,6 +79,22 @@ defmodule Bittorrent.Download do
 
   defp divide_pieces_into_blocks(torrent_file, piece_idx \\ nil) do
     pieces = PieceArithmetic.partition_pieces_from_file(torrent_file)
+    case piece_idx do
+      nil -> Enum.flat_map(pieces, &(partition_piece(&1)))
+      _   -> partition_piece(Enum.at(pieces, piece_idx))
+    end
+  end
+
+  defp magnet_ready_workers(info_dict, info_hash, workers) do
+    with worker_statuses = Enum.map(workers, &(Worker.inform_interest(&1))),
+      ^worker_statuses = List.duplicate(true, length(workers))
+    do
+      workers
+    end
+  end
+
+  defp magnet_divide_pieces_into_blocks(info_dict, piece_idx \\ nil) do
+    pieces = PieceArithmetic.partition_pieces_from_magnet_metadata(info_dict)
     case piece_idx do
       nil -> Enum.flat_map(pieces, &(partition_piece(&1)))
       _   -> partition_piece(Enum.at(pieces, piece_idx))

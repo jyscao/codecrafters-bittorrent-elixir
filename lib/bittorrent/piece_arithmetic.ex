@@ -14,6 +14,15 @@ defmodule Bittorrent.PieceArithmetic do
     end
   end
 
+  def partition_pieces_from_magnet_metadata(info_dict) do
+    with m(file_length, piece_length) = info_dict,
+      0 = rem(piece_length, @block_length),   # ensure piece-length divides block-length
+      {n_pieces, lp_size} = calc_pieces_count_and_lp_size(file_length, piece_length)
+    do
+      0..n_pieces-1 |> Enum.map(&({&1, get_blocks_range_and_lb_size(&1, piece_length, n_pieces, lp_size)}))
+    end
+  end
+
   defp calc_pieces_count_and_lp_size(file_length, piece_length) do
     n_pieces  = div(file_length, piece_length)
     rem_bytes = rem(file_length, piece_length)

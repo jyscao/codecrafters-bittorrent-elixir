@@ -63,6 +63,19 @@ defmodule MagnetLink do
     end
   end
 
+  def download_all(link, output_location) do
+    with params = MagnetLink.parse(link),
+      tracker_url = params[:tr],
+      info_hash = :binary.decode_hex(params[:xt]),
+      peer_addrs = get_peers_from_tracker(tracker_url, info_hash),
+      worker_pids = Enum.map(peer_addrs, &(ready_workers(info_hash, &1))),
+      [_meta_dict, info_dict] = Worker.request_metadata(hd(worker_pids)) |> Bencode.decode(),
+      info_dict = Bittorrent.Metainfo.get_info_link_from_magnet_metadata(info_dict) |> Map.put_new(:info_hash, info_hash)
+    do
+      Bittorrent.Download.magnet_download_all(info_dict, info_hash, worker_pids, output_location)
+    end
+  end
+
   defp ready_workers(info_hash, peer_addr) do
     with {:ok, pid} = Worker.start(info_hash, peer_addr),
       {true, peer_id_int} = Worker.do_magnet_handshake(pid),

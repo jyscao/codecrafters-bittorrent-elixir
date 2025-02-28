@@ -58,6 +58,9 @@ defmodule Bittorrent.CLI do
       ["magnet_download_piece", "-o", output_location, magnet_link, pidx] ->
         MagnetLink.download_piece(magnet_link, String.to_integer(pidx), output_location)
 
+      ["magnet_download", "-o", output_location, magnet_link] ->
+        MagnetLink.download_all(magnet_link, output_location)
+
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")
         System.halt(1)

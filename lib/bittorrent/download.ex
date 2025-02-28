@@ -66,6 +66,30 @@ defmodule Bittorrent.Download do
     end
   end
 
+  def magnet_download_all(info_dict, info_hash, worker_pids, output_location) do
+    with workers = magnet_ready_workers(info_dict, info_hash, worker_pids),
+      blocks = magnet_divide_pieces_into_blocks(info_dict),
+      %{piece_hashes: hashes} = info_dict
+    do
+      pieces_map = Stream.chunk_every(blocks, length(workers))
+        |> Stream.flat_map(
+          &(Enum.zip(workers, &1)
+            |> Enum.map(fn {pid, {pce, _, _} = blk_tup} -> {pce, Task.async(Worker, :download_block, [pid, blk_tup])} end)
+            |> Enum.map(fn {pce, task} -> {pce, Task.await(task)} end)
+          ))
+        |> Enum.group_by(fn {pce, _} -> pce end, fn {_, blocks} -> blocks end)
+        |> Map.new(fn {pce, blocks} -> {pce, Enum.join(blocks)} end)
+
+      with piece_statuses = Enum.map(pieces_map, fn {idx, data} -> verify_piece(hashes, idx, data) end),
+        ^piece_statuses = List.duplicate(true, map_size(pieces_map))
+      do
+        Enum.sort_by(pieces_map, fn {idx, _} -> idx end)
+        |> Enum.reduce(<<>>, fn {_, data}, acc -> acc <> data end)
+        |> then(&(File.write!(output_location, &1)))
+      end
+    end
+  end
+
   defp ready_workers(torrent_file) do
     with info_hash <- Metainfo.compute_info_hash(torrent_file, :raw),
       peer_addrs <- Peer.get_all_using_file(torrent_file),

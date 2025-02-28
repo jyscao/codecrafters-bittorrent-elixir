@@ -44,7 +44,9 @@ defmodule MagnetLink do
       {true, _peer_id_int} = Worker.do_magnet_handshake(pid),
       _peer_ext_id = Worker.do_extension_handshake(pid)
     do
-      Worker.request_metadata(pid)
+      [_meta_dict, info_dict] = Worker.request_metadata(pid) |> Bencode.decode()
+      Bittorrent.Metainfo.get_info_link_from_magnet_metadata(info_dict)
+      |> Map.merge(%{tracker_url: tracker_url, info_hash: params[:xt]})
     end
   end
 

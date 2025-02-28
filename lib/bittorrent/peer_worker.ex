@@ -3,6 +3,7 @@ defmodule Bittorrent.Peer.Worker do
 
   @block_length 16*1024   # 16 KiB
   @self_peer_id :crypto.hash(:sha, "jyscao")
+  @self_ext_id  193
 
   @msg_unchoke      1
   @msg_interested   2
@@ -114,7 +115,7 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_call(:extension_handshake, from, %{socket: socket} = state) do
-    payload = <<@msg_extension, 0>> <> "d1:md11:ut_metadatai193eee"
+    payload = <<@msg_extension, 0>> <> "d1:md11:ut_metadatai#{@self_ext_id}eee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
 
     if not is_nil(state.ext_id) do
@@ -127,7 +128,16 @@ defmodule Bittorrent.Peer.Worker do
   def handle_call(:request_metadata, _from, %{socket: socket, ext_id: ext_id} = state) do
     payload = <<@msg_extension, ext_id>> <> "d8:msg_typei0e5:piecei0ee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
-    {:reply, true, state}
+
+    meta_dicts = receive do
+      {:tcp, _socket, <<payload_len::32, @msg_extension, @self_ext_id, init_chunk::binary>>} ->
+        bytes_rem = payload_len - 2 - div(bit_size(init_chunk), 8)
+        recv_block_chunks(bytes_rem, [init_chunk])
+
+      _ -> raise("this should never be reached")
+    end
+
+    {:reply, "l" <> meta_dicts <> "e", state}
   end
 
   @impl true

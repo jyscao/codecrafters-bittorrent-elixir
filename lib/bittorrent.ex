@@ -48,7 +48,12 @@ defmodule Bittorrent.CLI do
         IO.puts("Peer Metadata Extension ID: #{peer_ext_id}")
 
       ["magnet_info", magnet_link] ->
-        MagnetLink.request_metadata(magnet_link)
+        m(tracker_url, info_hash, file_length, piece_length, piece_hashes) = MagnetLink.request_metadata(magnet_link)
+        IO.puts("Tracker URL: #{tracker_url}")
+        IO.puts("Length: #{file_length}")
+        IO.puts("Info Hash: #{info_hash}")
+        IO.puts("Piece Length: #{piece_length}")
+        IO.puts("Piece Hashes:\n#{Enum.join(piece_hashes, "\n")}")
 
       [command | args] ->
         IO.puts("Unknown command: '#{command}' with arguments '#{args}'")

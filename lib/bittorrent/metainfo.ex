@@ -17,6 +17,16 @@ defmodule Bittorrent.Metainfo do
     end
   end
 
+  def get_info_link_from_magnet_metadata(info_data) do
+    %{
+      "length"       => file_length,
+      "piece length" => piece_length,
+      "pieces"       => piece_hashes_utf8,
+    } = info_data
+    piece_hashes = String.to_charlist(piece_hashes_utf8) |> get_piece_hashes([])
+    m(file_length, piece_length, piece_hashes)
+  end
+
   defp get_all(decoded_data) do
     %{
       "announce" => tracker_url,

@@ -126,6 +126,8 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_call(:request_metadata, _from, %{socket: socket, ext_id: ext_id} = state) do
+    ext_id = ext_id || 1    # FIXME: this is a shitty workaround, need to diagnose & fix underlying issue
+
     payload = <<@msg_extension, ext_id>> <> "d8:msg_typei0e5:piecei0ee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
 

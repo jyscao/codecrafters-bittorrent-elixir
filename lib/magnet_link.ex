@@ -57,16 +57,17 @@ defmodule MagnetLink do
       peer_addrs = get_peers_from_tracker(tracker_url, info_hash),
       worker_pids = Enum.map(peer_addrs, &(ready_workers(info_hash, &1))),
       [_meta_dict, info_dict] = Worker.request_metadata(hd(worker_pids)) |> Bencode.decode(),
-      info_dict = Bittorrent.Metainfo.get_info_link_from_magnet_metadata(info_dict) |> Map.merge(%{tracker_url: tracker_url, info_hash: info_hash})
+      info_dict = Bittorrent.Metainfo.get_info_link_from_magnet_metadata(info_dict) |> Map.put_new(:info_hash, info_hash)
     do
       Bittorrent.Download.magnet_download_piece(info_dict, info_hash, worker_pids, piece_idx, output_location)
     end
   end
 
-  defp ready_workers(info_hash, peer_addr)  do
+  defp ready_workers(info_hash, peer_addr) do
     with {:ok, pid} = Worker.start(info_hash, peer_addr),
-      {true, _peer_id_int} = Worker.do_magnet_handshake(pid),
-      _peer_ext_id = Worker.do_extension_handshake(pid)
+      {true, peer_id_int} = Worker.do_magnet_handshake(pid),
+      peer_ext_id = Worker.do_extension_handshake(pid),
+      true = not is_nil(peer_ext_id)
     do
       pid
     end

@@ -17,6 +17,7 @@ defmodule MagnetLink do
 
   def parse(_link), do: raise("invalid magnet link")
 
+  # TODO: refactor to make the magnet link functions more modular
   def shake_hand_and_get_peer_id(link) do
     with params = MagnetLink.parse(link),
       tracker_url = params[:tr],
@@ -45,6 +46,7 @@ defmodule MagnetLink do
       _peer_ext_id = Worker.do_extension_handshake(pid)
     do
       [_meta_dict, info_dict] = Worker.request_metadata(pid) |> Bencode.decode()
+      # TODO: hash the bencoded info_dict and verify info-hash matches that from the magnet link URL
       Bittorrent.Metainfo.get_info_link_from_magnet_metadata(info_dict)
       |> Map.merge(%{tracker_url: tracker_url, info_hash: params[:xt]})
     end

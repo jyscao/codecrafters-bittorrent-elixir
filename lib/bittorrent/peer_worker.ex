@@ -32,6 +32,9 @@ defmodule Bittorrent.Peer.Worker do
   def do_extension_handshake(pid), do: GenServer.call(pid, :extension_handshake)
   def request_metadata(pid), do: GenServer.call(pid, :request_metadata)
 
+  # def check_state(pid), do: GenServer.call(pid, :check_state)
+  # def handle_call(:check_state, _from, state), do: {:reply, state, state}
+
 
 
   # callbacks
@@ -82,6 +85,7 @@ defmodule Bittorrent.Peer.Worker do
     {:reply, block, state}
   end
 
+  # TODO: clean-up, simplify & conslidate handling of peer's bitfield messages extension handshakes - keep in mind that they are sent in that order
   def handle_call(:magnet_handshake, _from, %{socket: socket, info_hash: info_hash} = state) do
     handshake_msg = <<19>> <> "BitTorrent protocol" <> <<0::40, 16, 0::16>> <> info_hash <> @self_peer_id
     :ok = :gen_tcp.send(socket, handshake_msg)
@@ -126,7 +130,8 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_call(:request_metadata, _from, %{socket: socket, ext_id: ext_id} = state) do
-    ext_id = ext_id || 1    # FIXME: this is a shitty workaround, need to diagnose & fix underlying issue
+    if is_nil(ext_id), do: raise("peer's extension ID is nil for #{inspect(state.peer_addr)}")
+    # ext_id = ext_id || 1    # FIXME: this is a shitty workaround, need to diagnose & fix underlying issue
 
     payload = <<@msg_extension, ext_id>> <> "d8:msg_typei0e5:piecei0ee"
     :ok = :gen_tcp.send(socket, ext_32b(div(bit_size(payload), 8)) <> payload)
@@ -179,6 +184,9 @@ defmodule Bittorrent.Peer.Worker do
   end
 
   def handle_info(msg, state) do
+    IO.puts(String.duplicate("-", 50))
+    IO.inspect(msg, label: "received unexpected message")
+    IO.puts(String.duplicate("-", 50))
     {:noreply, state}
   end
 
